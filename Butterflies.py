@@ -98,6 +98,9 @@ class Field(DataFrame):
 
 class Butterfly:
     """
+    This class creates the butterfly object. It's main parameters are food level, status, and starting position
+    Food level and starting position are random, though starting position is  based on the size of the Field
+    and it always enters on an edge
 
     """
     def __init__(self, length, width):
@@ -143,25 +146,25 @@ class Butterfly:
                     second_die = np.random.random_sample()
                     if second_die > 0.05:
                         self.status = "exit"
-                    elif second_die <= 0.05 and second_die >0.01:
+                    elif 0.05 >= second_die >0.01:
                         self.status = "dead"
                     else:
                         pass
-            elif 0.75 < roll_die and roll_die <=0.83:
+            elif 0.75 < roll_die <=0.83:
                 # Easterly
                 second_die = np.random.random_sample()
                 if second_die >= 0.01:
                     self.position = (self.position[0] + 1, self.position[1])
                 else:
                     self.status = "dead"
-            elif roll_die > 0.83 and roll_die <= 0.91:
+            elif 0.83 < roll_die <= 0.91:
                 # Southerly
                 second_die = np.random.random_sample()
                 if second_die >= 0.01:
                     self.position = (self.position[0], self.position[1] + 1)
                 else:
                     self.status = "dead"
-            elif roll_die > 0.91 and roll_die <= 0.99:
+            elif 0.91 < roll_die <= 0.99:
                 # Westerly
                 second_die = np.random.random_sample()
                 if second_die >= 0.01:
@@ -175,7 +178,7 @@ class Butterfly:
                     pass
                 else:
                     self.status = 'dead'
-        elif self.food_level > 25.0 and self.food_level <= 50.0:
+        elif 25.0 < self.food_level <= 50.0:
             roll_die = np.random.random_sample()
             if roll_die <= 0.05:
                 self.status = 'dead'
@@ -190,8 +193,19 @@ class Butterfly:
         self.food_level -= 0.0225
 
 
-def seek_food(monarch: Butterfly) -> Butterfly:
+def nearest_food(area:Field) -> pd.Dataframe:
+    key = []
+    for column in area:
+        temp_column = []
+        for row in area:
+            if area[column][row] == 'o':
+                temp_column.append((column, row))
+            else:
+
+
+def seek_food(monarch: Butterfly, area: Field) -> Butterfly:
     location = monarch.get_position()
+
     return location
     # TODO figure out a way to find the nearest food source and have the monarch move there with high probability
 
