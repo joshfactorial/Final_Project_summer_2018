@@ -3,6 +3,7 @@ import math
 import pandas as pd
 from pandas import DataFrame
 import time
+from multiprocessing import Pool
 
 
 class Field(DataFrame):
@@ -24,11 +25,6 @@ class Field(DataFrame):
       File "C:/Users/Joshua/PycharmProjects/Final_Project/Butterflies.py", line 30, in __init__
         raise ValueError("values must be either 1 (crop), 2 (food), or 3 (shelter)")
     ValueError: values must be either 1 (crop), 2 (food), or 3 (shelter)
-    >>> rf = Field.random_field(10, 10, 85, 10, 5)
-    1    85
-    2    10
-    3     5
-    dtype: int64
     """
 
     def __init__(self, *args, **kwargs):
@@ -46,41 +42,25 @@ class Field(DataFrame):
         except ValueError:
             print("values must be either 1 (crop), 2 (food), or 3 (shelter)")
 
-    def get_nearest_food_table(self):
+    def get_food_table(self):
         # found this trick on stack overflow
         # https://stackoverflow.com/questions/28979794/python-pandas-getting-the-locations-of-a-value-in-dataframe
-        locs = self[self == "o"].stack().index.tolist()
-        key = []
-        for column in self:
-            temp_column = []
-            for row in self[column].index.tolist():
-                max_dist = self.shape[0] ** 2 + self.shape[1] ** 2
-                for coordinate in locs:
-                    temp_dist = abs(coordinate[1] - column) + abs(coordinate[0] - row)
-                    if temp_dist < max_dist:
-                        temp_nearest = (coordinate[1], coordinate[0])
-                        max_dist = abs(coordinate[1] - column) + abs(coordinate[0] - row)
-                temp_column.append(temp_nearest)
-            key.append(temp_column)
-        return pd.DataFrame(key).T
+        locs_food = self[self == "o"].stack().index.tolist()
+        food_table = {'food_x': [], 'food_y': []}
+        for location in locs_food:
+            food_table['food_x'].append(location[1])
+            food_table['food_y'].append(location[0])
+        return pd.DataFrame(food_table)
 
-    def get_nearest_shelter_table(self):
+    def get_shelter_table(self):
         # found this trick on stack overflow
         # https://stackoverflow.com/questions/28979794/python-pandas-getting-the-locations-of-a-value-in-dataframe
-        locs = self[self == "*"].stack().index.tolist()
-        key = []
-        for column in self:
-            temp_column = []
-            for row in self[column].index.tolist():
-                max_dist = self.shape[0] ** 2 + self.shape[1] ** 2
-                for coordinate in locs:
-                    temp_dist = abs(coordinate[1] - column) + abs(coordinate[0] - row)
-                    if temp_dist < max_dist:
-                        temp_nearest = (coordinate[1], coordinate[0])
-                        max_dist = abs(coordinate[1] - column) + abs(coordinate[0] - row)
-                temp_column.append(temp_nearest)
-            key.append(temp_column)
-        return pd.DataFrame(key).T
+        locs_shelter = self[self == "*"].stack().index.tolist()
+        shelter_table = {'shelter_x': [], 'shelter_y': []}
+        for location in locs_shelter:
+            shelter_table['shelter_x'].append(location[1])
+            shelter_table['shelter_y'].append(location[0])
+        return pd.DataFrame(shelter_table)
 
     @classmethod
     def random_field(cls, length, width, percent_crops, percent_food, percent_shelter):
@@ -169,24 +149,22 @@ class Butterfly:
         return self.position
 
     def __str__(self):
-        return 'Monarch butterfly with {}% food on the {} field'.format(self.food_level, self.area)
+        return 'Monarch butterfly with {}% food at {}'.format(self.food_level, self.position)
 
     def __repr__(self):
-        return 'Monarch butterfly with {}% food on the {} field'.format(self.food_level, self.area)
+        return 'Monarch butterfly with {}% food at {}'.format(self.food_level, self.position)
 
     def check_for_death(self):
+        roll_die = np.random.random_sample()
         if self.food_level > 50.0:
             # if it's belly is full, move with a preference toward North
-            roll_die = np.random.random_sample()
-            if roll_die <= 0.001:
+            if roll_die < 0.000001:
                 self.status = 'dead'
         elif 25.0 < self.food_level <= 50.0:
-            roll_die = np.random.random_sample()
-            if roll_die <= 0.05:
+            if roll_die <= 0.00005:
                 self.status = 'dead'
         elif 0 < self.food_level <= 25.0:
-            roll_die = np.random.random_sample()
-            if roll_die < 0.1:
+            if roll_die < 0.0001:
                 self.status = 'dead'
         else:
             self.status = 'dead'
@@ -195,34 +173,45 @@ class Butterfly:
     def random_move(self):
         coord = np.random.choice((0, 1))
         direction = np.random.choice((-1, 1))
-        if self.position[coord] + direction > 0:
-            self.position[coord] = self.position[coord] + direction
-        elif self.position[coord] - direction > 0:
-            self.position[coord] = self.position[coord] - direction
+        if coord == 0:
+            if self.width > self.position[coord] + direction >= 0:
+                self.position[coord] = self.position[coord] + direction
+            else:
+                pass
         else:
-            pass
+            if self.length > self.position[coord] + direction >= 0:
+                self.position[coord] = self.position[coord] + direction
+            else:
+                pass
         return self
 
     def move(self):
         while self.status == 'alive':
-            while self.sheltered:
+            while self.sheltered and self.status == 'alive':
                 roll_die = np.random.random_sample()
-                if roll_die > .5:
-                    pass
-                else:
+                self.check_for_death()
+                print(self.position)
+                if self.food_level < 25:
+                    seek_resource(self, 'food')
+                elif roll_die < 0.5:
+                    print('move randomly')
                     self.random_move()
+                else:
+                    print('stay sheltered')
+                    pass
                 if self.area[self.position[0]][self.position[1]] != '*':
+                    print('moved out of shelter')
                     self.sheltered = False
-                self.food_level -= 0.0125
-            if self.food_level > 50.0:
+                self.food_level -= 0.0112
+            if self.food_level >= 50.0:
                 # if it's belly is full, move with a preference toward North
                 roll_die = np.random.random_sample()
-                if roll_die <= 0.75:
+                if roll_die <= 0.85:
                     # Northly
+                    print('moving north')
                     if self.position[1] > 0:
-                        self.check_for_death()
-                        self.position = [self.position[0], self.position[1] - 1]
-                    else:
+                        self.position[1] -= 1
+                    elif self.position[1] == 0:
                         second_die = np.random.random_sample()
                         if second_die > 0.05:
                             self.status = "exit"
@@ -230,73 +219,112 @@ class Butterfly:
                         else:
                             self.check_for_death()
                             pass
-                elif 0.75 < roll_die <= 0.83:
+                    else:
+                        raise ValueError("Something's wrong with the northly moving coordinates.")
+                elif 0.85 < roll_die <= 0.855:
+                    # move randomly
+                    print('Moving randomly')
                     self.random_move()
                     self.check_for_death()
-                elif 0.83 < roll_die <= 0.85:
+                elif 0.855 < roll_die <= 0.856:
+                    # look for shelter
+                    print('seeking shelter')
                     seek_resource(self, 'shelter')
-                else:
+                elif roll_die > 0.856:
                     # stay
-                    second_die = np.random.random_sample()
-                    if second_die >= 0.001:
-                        pass
-                    else:
-                        self.check_for_death()
-            elif 25.0 < self.food_level <= 50.0:
+                    print("not moving")
+                    self.check_for_death()
+                    pass
+            elif 25.0 <= self.food_level < 50.0:
                 roll_die = np.random.random_sample()
-                self.check_for_death()
-                if 0 > roll_die >= 0.051:
+                if 0 > roll_die >= 0.001:
+                    # slight chance of seeking shelter
+                    print('seeking shelter')
                     seek_resource(self, 'shelter')
                 else:
+                    # usually look for food
+                    print('looking for food')
                     seek_resource(self, 'food')
             else:
                 roll_die = np.random.random_sample()
-                self.check_for_death()
-                if roll_die > 0.001:
+                # slight chance it looks for shelter
+                if roll_die > 0.0001:
+                    print("seeking shelter")
                     seek_resource(self, 'shelter')
+                # otherwise look for foot
                 else:
+                    print("looking for food")
                     seek_resource(self, 'food')
             if self.area[self.position[0]][self.position[1]] == "*":
+                # if there are trees in this sector it may look for shelter
                 roll_die = np.random.random_sample()
-                if roll_die >= .4:
+                if roll_die >= .5:
                     self.sheltered = True
+                    print('found shelter')
             self.food_level -= 0.0225
 
 
 def seek_resource(monarch: Butterfly, resource) -> Butterfly:
     location = monarch.get_position()
     area = monarch.get_area()
-    time.sleep(1)
     if resource == 'shelter':
-        nearest_resource_table = area.get_nearest_shelter_table()
-        nearest_resource = nearest_resource_table[location[0]][location[1]]
+        symbol = '*'
+        resource_table = area.get_shelter_table()
+        options = resource_table[resource_table['shelter_y'] < location[1]].index.tolist()
+        if options:
+            found_scent = np.random.choice(options)
+            print(found_scent)
+        else:
+            monarch.food_level -= 0.0225
+            return None
+        chosen_resource = resource_table['shelter_x'][found_scent], resource_table['shelter_y'][found_scent]
     elif resource == 'food':
-        nearest_resource_table = area.get_nearest_food_table()
-        nearest_resource = nearest_resource_table[location[0]][location[1]]
+        symbol = 'o'
+        resource_table = area.get_food_table()
+        options = resource_table[resource_table['food_y'] < location[1]].index.tolist()
+        if options:
+            found_scent = np.random.choice(options)
+            print(found_scent)
+        else:
+            monarch.food_level -= 0.225
+            return None
+        chosen_resource = resource_table['food_x'][found_scent], resource_table['food_y'][found_scent]
     else:
         raise ValueError('incorrect resource passed to seek_resource function')
-    while (location[0] != nearest_resource[0] or location[1] != nearest_resource[1]) and monarch.status == 'alive':
+    while (location[0] != chosen_resource[0] or location[1] != chosen_resource[1]) and monarch.status == 'alive':
         die_roll = np.random.random_sample()
-        if die_roll >= 0.15:
-            if location[0] > nearest_resource[0]:
+        print("Moving toward {}".format(resource))
+        if die_roll >= 0.05:
+            if location[0] > chosen_resource[0]:
                 location[0] -= 1
-            elif location[0] < nearest_resource[0]:
+            elif location[0] < chosen_resource[0]:
                 location[0] += 1
-            elif location[1] > nearest_resource[1]:
+            elif location[1] > chosen_resource[1]:
                 location[1] -= 1
-            else:
+            elif location[1] < chosen_resource[1]:
                 location[1] += 1
-        elif .14 < die_roll < 0.15:
+            else:
+                monarch.random_move()
+            print(location)
+            monarch.position = location
+        elif .04 < die_roll < 0.05:
+            print("Hanging out intead of looking for {}".format(resource))
             pass
         else:
-            coord = np.random.choice((0, 1))
-            direction = np.random.choice((-1, 1))
-            location[coord] = location[coord] + direction
+            print("moving randomly")
+            monarch.random_move()
         monarch.food_level -= 0.0225
-        monarch.check_for_death()
-    monarch.position = location
-    monarch.food_level = 100
-    return monarch
+        if monarch.food_level < 25:
+            monarch.check_for_death()
+            if resource == 'shelter':
+                seek_resource(monarch, 'food')
+    if monarch.status == 'dead':
+        print("Butterfly died looking for {}".format(resource))
+    else:
+        print("Butterfly found {}".format(resource))
+    if resource == 'food':
+        monarch.food_level = 100
+    return None
 
 
 def create_standard_test(iterations: int) -> Field:
@@ -405,22 +433,28 @@ def create_food_middle_windbreak_test(iterations: int) -> Field:
     return Field(test_site)
 
 
+def move_butterfly(monarch: Butterfly):
+    monarch.move()
+
+
 if __name__ == '__main__':
-    test2 = [[1, 1, 1, 1, 1, 1, 1, 1, 1, 3], [1, 1, 1, 1, 1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 2, 1, 1, 1, 1],
-             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
-    test2 = Field(test2)
-    print(test2)
-    results = []
-    b1 = Butterfly(test2)
-    b1.sheltered = True
-    b1.move()
-    print(b1.get_status())
-    # for i in range(1000):
-    #     butterfly = Butterfly(test2)
-    #     print(butterfly.get_position())
-    #     print(butterfly.food_level)
-    #     butterfly.move()
-    #     print(butterfly.get_status())
-    #     results.append(butterfly.get_status())
-    # print(results)
+    pass
+    # start_time = time.time()
+    # test2 = create_standard_test(3334)
+    # print("--- %s seconds ---" % (time.time() - start_time))
+    # results = []
+    #
+
+    #     with Pool(processes=20) as p:
+    #         p.map(move_butterfly, swarm)
+    #     for butterfly in swarm:
+    #         print(butterfly.get_position())
+    #         print(butterfly.get_status())
+    #         results.append(butterfly.get_status())
+    # print("{} butterflies processed".format(len(results)))
+    # print("Dead percentage = {:.2f}%".format(100 * results.count('dead')/len(results)))
+    #
+    # print("--- %s seconds ---" % (time.time() - start_time))
+
+
 
