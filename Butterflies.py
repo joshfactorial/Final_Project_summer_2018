@@ -563,25 +563,48 @@ def create_middle_shelter_windbreak_test_2(iterations: int) -> Field:
     return Field(construction)
 
 
+def create_middle_shelter_windbreak_test_3(iterations: int) -> Field:
+    # fields are assumed to have a scale 1 cell has dimension 15 meters x 15 meters
+    # create the top and bottom rows of the field
+    base_field_base_rows = [1] * 100
+    base_field_base_rows[0] = 2
+    base_field_base_rows[99] = 2
+    base_field_base_rows[49] = 3
+    # create the standard middle row
+    base_field_middle_rows = [1] * 100
+    base_field_middle_rows[0] = 2
+    base_field_middle_rows[99] = 2
+    base_field_middle_rows[49] = 2
+    standard_field = [base_field_base_rows]
+    for j in range(98):
+        standard_field.append(base_field_middle_rows)
+    standard_field.append(base_field_base_rows)
+    # create the standard test site
+    construction = []
+    for j in range(0, iterations + 1):
+        construction += standard_field
+    return Field(construction)
+
+
 def test_field(dictionary, number):
     # This function takes care of some repetitive code I had written earlier. It's not perfect, but it works for now.
     start_time = time.time()
     if number == 0:
-        field_to_test = create_standard_test(333)
+        field_to_test = create_standard_test(33)
     elif number == 1:
-        field_to_test = create_food_heavy_test(333)
+        field_to_test = create_food_heavy_test(33)
     elif number == 2:
-        field_to_test = create_middle_food_windbreak_test(333)
+        field_to_test = create_middle_food_windbreak_test(33)
     elif number == 3:
-        field_to_test = create_middle_shelter_windbreak_test(333)
+        field_to_test = create_middle_shelter_windbreak_test(33)
     elif number == 4:
-        field_to_test = create_shelter_heavy_test(333)
+        field_to_test = create_shelter_heavy_test(33)
     elif number == 5:
-        field_to_test = Field.random_field(333, 100, 90, 5, 5)
+        field_to_test = Field.random_field(3333, 100, 90, 5, 5)
     elif number == 6:
-        field_to_test = Field.random_field(333, 100, 80, 15, 5)
+        field_to_test = Field.random_field(3333, 100, 80, 15, 5)
     elif number == 7:
-        field_to_test = Field.random_field(333, 100, 80, 5, 15)
+        field_to_test = Field.random_field(3333, 100, 80, 5, 15)
     else:
         return dictionary
     food_indices = create_food_table(field_to_test)
@@ -600,50 +623,32 @@ def test_field(dictionary, number):
 
 if __name__ == '__main__':
     # first analysis
-    # master_results = {}
-    # for i in range(0, 8):
-    #     test_field(master_results, i)
-    # index = ['standard', 'food_heavy', 'middle_food', 'middle_shelter', 'shelter_heavy', 'balanced_random', 'food_random',
-    #          'shelter_random']
-    # master_results = pd.DataFrame(master_results).T
-    # master_results.index = index
-    # print("The best-performing field was {}".format(master_results[0].idxmax()))
+    master_results = {}
+    for i in range(0, 8):
+        test_field(master_results, i)
+    index = ['standard', 'food_heavy', 'middle_food', 'middle_shelter', 'shelter_heavy', 'balanced_random', 'food_random',
+             'shelter_random']
+    master_results = pd.DataFrame(master_results).T
+    master_results.index = index
+    print("The best-performing field was {}".format(master_results[0].idxmax()))
 
     # field stats
-    # field = create_middle_shelter_windbreak_test(333)
-    # food = len(field[field == 'o'].stack().index.tolist())
-    # shelter = len(field[field == '*'].stack().index.tolist())
-    # crops = len(field[field == '='].stack().index.tolist())
-    # total = food + shelter + crops
-    # print('Percent food: {:.2f}%'.format(math.ceil(100 * food/total)))
-    # print("Percent shelter: {:.2f}%".format(math.ceil(100 * shelter/total)))
-    # print("Percent crops: {:.2f}%".format(math.floor(100 * crops/total)))
-
-    #try to find an optimal random field
-    start_time = time.time()
-    score_dictionary = {}
-    for i in range(1000):
-        field = Field.random_field(333, 100, 95, 4, 1)
-        food_indices = create_food_table(field)
-        shelter_indices = create_shelter_table(field)
-        results = []
-        for j in range(200):
-            monarch1 = Butterfly(field)
-            monarch1.move(food_indices, shelter_indices)
-            results.append(monarch1.get_status())
-        score_dictionary["test_field_{}".format(i)] = [(100 * (results.count('exit') / len(results))), field]
-        print("--- %s seconds ---" % (time.time() - start_time))
-    df = pd.DataFrame(score_dictionary).T
-    print(df.loc[df[0].idxmax()][0])
-    print(df.loc[df[0].idxmax()][1])
+    field = create_middle_shelter_windbreak_test(33)
+    food = len(field[field == 'o'].stack().index.tolist())
+    shelter = len(field[field == '*'].stack().index.tolist())
+    crops = len(field[field == '='].stack().index.tolist())
+    total = food + shelter + crops
+    print('Percent food: {:.2f}%'.format(math.ceil(100 * food/total)))
+    print("Percent shelter: {:.2f}%".format(math.ceil(100 * shelter/total)))
+    print("Percent crops: {:.2f}%".format(math.floor(100 * crops/total)))
 
     # Testing a higher crop percentage variant of the middle rows
     start_time = time.time()
-    field_test = create_middle_shelter_windbreak_test_2(333)
+    field_test = create_middle_shelter_windbreak_test_2(33)
     food_indices = create_food_table(field_test)
     shelter_indices = create_shelter_table(field_test)
     results = []
-    for j in range(100):
+    for j in range(1000):
         monarch1 = Butterfly(field_test)
         monarch1.move(food_indices, shelter_indices)
         results.append(monarch1.get_status())
@@ -659,16 +664,51 @@ if __name__ == '__main__':
     print("Percent shelter: {:.2f}%".format(math.ceil(100 * shelter/total)))
     print("Percent crops: {:.2f}%".format(math.floor(100 * crops/total)))
 
+    start_time = time.time()
+    field_test = create_middle_shelter_windbreak_test_3(33)
+    food_indices = create_food_table(field_test)
+    shelter_indices = create_shelter_table(field_test)
+    results = []
+    for j in range(1000):
+        if j+1 % 100 == 0 and j != 0:
+            print("Test {}".format(j+1))
+            print("--- %s seconds ---" % (time.time() - start_time))
+        monarch1 = Butterfly(field_test)
+        monarch1.move(food_indices, shelter_indices)
+        results.append(monarch1.get_status())
+    print("Dead percentage = {:.2f}%".format(100 * results.count('dead') / len(results)))
+    print("Exit percentage = {:.2f}%".format(100 * results.count('exit') / len(results)))
+    print("--- %s seconds ---" % (time.time() - start_time))
 
-    # This is a field of only food, to test the parameters
-    # starttime = time.time()
-    # testfield = create_test_food_test(3334)
-    # results = []
-    # print('starting test')
-    # for k in range(1000):
-    #     monarch1 = Butterfly(testfield)
-    #     monarch1.move()
-    #     results.append(monarch1.get_status())
-    # print("Dead percentage = {:.2f}%".format(100 * results.count('dead') / len(results)))
-    # print("Exit percentage = {:.2f}%".format(100 * results.count('exit') / len(results)))
-    # print("--- %s seconds ---" % (time.time() - starttime))
+    food = len(field_test[field_test == 'o'].stack().index.tolist())
+    shelter = len(field_test[field_test == '*'].stack().index.tolist())
+    crops = len(field_test[field_test == '='].stack().index.tolist())
+    total = food + shelter + crops
+    print('Percent food: {:.2f}%'.format(100 * food / total))
+    print("Percent shelter: {:.2f}%".format(100 * shelter / total))
+    print("Percent crops: {:.2f}%".format(100 * crops / total))
+
+ # try to find an optimal random field
+    start_time = time.time()
+    score_dictionary = {}
+    for i in range(1000):
+        field = Field.random_field(333, 100, 95, 4, 1)
+        food_indices = create_food_table(field)
+        shelter_indices = create_shelter_table(field)
+        results = []
+        if (i + 1) % 100 == 0 and i != 0:
+            print('Test #{}'.format(i + 1))
+            print("--- %s seconds ---" % (time.time() - start_time))
+        for j in range(200):
+            monarch1 = Butterfly(field)
+            monarch1.move(food_indices, shelter_indices)
+            results.append(monarch1.get_status())
+        score_dictionary["test_field_{}".format(i)] = [(100 * (results.count('exit') / len(results))), field]
+    print("--- %s seconds ---" % (time.time() - start_time))
+    df = pd.DataFrame(score_dictionary).T
+    max = 0
+    for row in df[0]:
+        if row > max:
+            max = row
+    print(df[df[0] == max].values.tolist()[0][0])
+    print(df[df[0] == max].values.tolist()[0][1])
