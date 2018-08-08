@@ -124,6 +124,8 @@ to 50 km to be my standard distance. [monarch lab FAQ](https://monarchlab.org/bi
 The average farm size in Illinois in 2018 was 358 acres [average farm size](https://farmdocdaily.illinois.edu/2013/08/trends-illinois-farmland-parcel-size.html),
 which translates to about 1.4 square kilometers, so I'll base it on 1.5 km to make it easier.
 
+Stack overflow as noted in the code.
+
 
 
 
